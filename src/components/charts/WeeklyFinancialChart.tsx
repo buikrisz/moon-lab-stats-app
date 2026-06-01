@@ -35,7 +35,7 @@ export function WeeklyFinancialChart({ data }: Props) {
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="week" tick={{ fontSize: 11 }} />
           <YAxis ticks={ticks} domain={[0, ticks[ticks.length - 1]]} tickFormatter={(v) => `${Number(v) / 1000}k`} />
-          <Tooltip formatter={(v: number) => huf(v)} />
+          <Tooltip formatter={(value) => huf(Number(value ?? 0))} />
           <Legend />
           <Line type="monotone" dataKey={metric} stroke={metricColors[metric]} strokeWidth={3} />
         </LineChart>

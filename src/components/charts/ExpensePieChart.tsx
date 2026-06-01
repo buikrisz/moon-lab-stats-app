@@ -15,7 +15,7 @@ export function ExpensePieChart({ data }: Props) {
           <Pie data={data} dataKey="value" innerRadius="42%" outerRadius="82%" paddingAngle={2}>
             {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
           </Pie>
-          <Tooltip formatter={(v: number) => huf(v)} />
+          <Tooltip formatter={(value) => huf(Number(value ?? 0))}/>
         </PieChart>
       </ResponsiveContainer>
       <div className="legendList">

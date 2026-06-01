@@ -43,7 +43,7 @@ export function AnnualActivityChart({ data }: Props) {
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="month" />
             <YAxis ticks={avgTicks} domain={[0, avgTicks[avgTicks.length - 1]]} allowDecimals={false} />
-            <Tooltip formatter={(v: number) => v.toFixed(2)} />
+            <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="Átlag" stroke="#315c49" strokeWidth={3} />
           </LineChart>
