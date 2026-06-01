@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { bindGoogleEmail, getBoundGoogleEmail } from '../../../../lib/authRepository';
-import { getSessionFromRequest, setSessionCookie } from '../../../../lib/session';
+import { bindGoogleEmail, getBoundGoogleEmail } from '../../../../../lib/authRepository';
+import { getSessionFromRequest, setSessionCookie } from '../../../../../lib/session';
 
 const stateCookie = 'moonlab_google_oauth_state';
 
