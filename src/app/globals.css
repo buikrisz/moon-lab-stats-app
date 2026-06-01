@@ -388,6 +388,7 @@ table{
 }
 .googleLoginButton{
   height:44px;
+  width:44px;
   border:1px solid #d7ded7;
   background:#fff;
   border-radius:13px;
@@ -397,6 +398,7 @@ table{
   align-items:center;
   justify-content:center;
   gap:8px;
+  align-self:center;
 }
 .authActions{
   margin-top:10px;

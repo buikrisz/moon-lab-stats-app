@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
 import { Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
+import { FcGoogle } from 'react-icons/fc';
 import { Button } from '../common/Button';
 
 type Props = {
@@ -35,6 +36,10 @@ export function LoginScreen({ onLoggedIn }: Props) {
     onLoggedIn();
   };
 
+  const handleGoogleLogin = () => {
+    window.location.href = '/api/auth/google/start?action=login';
+  };
+
   return (
     <div className="loginScreen">
       <div className="loginCard">
@@ -42,23 +47,33 @@ export function LoginScreen({ onLoggedIn }: Props) {
         <h1>Moon Lab Pilates</h1>
         <p>Jelentkezz be az admin felülethez.</p>
 
-        <label>Felhasználónév
-          <input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" />
+        <label>
+          Felhasználónév
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+          />
         </label>
 
-        <label>Jelszó
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" onKeyDown={e => e.key === 'Enter' && login()} />
+        <label>
+          Jelszó
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            onKeyDown={(e) => e.key === 'Enter' && login()}
+          />
         </label>
 
         {error && <div className="loginError">{error}</div>}
 
-        <Button variant="primary" onClick={login} disabled={isLoading}><Lock size={16}/> {isLoading ? 'Belépés...' : 'Belépés'}</Button>
+        <Button variant="primary" onClick={login} disabled={isLoading}>
+          <Lock size={16} /> {isLoading ? 'Belépés...' : 'Belépés'}
+        </Button>
 
-        <button className="googleLoginButton" onClick={() => { window.location.href = '/api/auth/google/start?action=login'; }}>
-          <Mail size={16}/> Belépés Gmaillel
-        </button>
-
-        <small>Belépés után a jelszó a Beállításokban módosítható.</small>
+        <FcGoogle className="googleLoginButton" onClick={handleGoogleLogin} />
       </div>
     </div>
   );
