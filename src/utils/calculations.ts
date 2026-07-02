@@ -6,6 +6,12 @@ export const months = ['Január', 'Február', 'Március', 'Április', 'Május', 
 
 export const dayNames = ['Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap'];
 
+/**
+ * Creates the seven empty day rows used when a new editable week is started.
+ *
+ * Each day starts with zeroed totals and empty detail arrays so the day editor
+ * can safely append entries, special trainer costs, and extra revenue.
+ */
 export const createEmptyDays = (): DayRow[] =>
   dayNames.map(day => ({
     id: crypto.randomUUID(),
@@ -20,6 +26,13 @@ export const createEmptyDays = (): DayRow[] =>
     extraRevenues: [],
   }));
 
+/**
+ * Recalculates one day after its class/pass entries or cost overrides change.
+ *
+ * Revenue is built from participant entries plus day-level extra revenue.
+ * Trainer cost uses the normal hourly rate for regular hours, the full-house
+ * rate for full hours, and then adds any special trainer costs.
+ */
 export const recalcDay = (
   day: DayRow,
   trainerHourlyCost: number,
@@ -40,6 +53,12 @@ export const recalcDay = (
   };
 };
 
+/**
+ * Sums already-calculated day rows into one raw activity total.
+ *
+ * This intentionally does not include week-level legacy fields like expired
+ * passes or studio rent; callers decide when those should be added.
+ */
 export const sumDays = (days: DayRow[]) => ({
   revenue: days.reduce((a, r) => a + r.revenue, 0),
   heldHours: days.reduce((a, r) => a + r.heldHours, 0),
@@ -49,6 +68,12 @@ export const sumDays = (days: DayRow[]) => ({
   extraRevenue: days.reduce((a, r) => a + (r.extraRevenues || []).reduce((sum, item) => sum + item.amount, 0), 0),
 });
 
+/**
+ * Calculates totals for a full week as one unit.
+ *
+ * Used by weekly screens where the entire week should stay together. Adds
+ * day totals plus week-level extra revenue fields exactly once.
+ */
 export const weekTotals = (week: WeekRow) => {
   const d = sumDays(week.days);
   const legacyExtraRevenue = week.expiredPasses + week.studioRent;
@@ -66,9 +91,22 @@ export const weekTotals = (week: WeekRow) => {
   };
 };
 
+/**
+ * Returns revenue stored on the week instead of on a specific day.
+ *
+ * Monthly reports use this separately because these values cannot be split by
+ * day; the current rule is to count them in the week start month.
+ */
 const weekLevelExtraRevenue = (week: WeekRow) =>
   week.expiredPasses + week.studioRent + (week.extraRevenues || []).reduce((sum, item) => sum + item.amount, 0);
 
+/**
+ * Calculates the part of a week that belongs to one calendar month.
+ *
+ * A crossing week is split by inferring each day date from `week.startDate`
+ * plus the day index. Week-level extra revenue is counted only when the week
+ * starts inside the requested month range.
+ */
 const weekTotalsForMonthRange = (week: WeekRow, range: { start: string; end: string }) => {
   const daysInMonth = week.days.filter((_, index) => {
     const dayDate = addDays(week.startDate, index);
@@ -94,6 +132,12 @@ const weekTotalsForMonthRange = (week: WeekRow, range: { start: string; end: str
 };
 
 
+/**
+ * Sums active manual or one-time expenses for one month/year.
+ *
+ * Pass `category` to limit the result to one expense category, such as ads or
+ * utilities. Without a category it returns all manual expenses for the month.
+ */
 export const getManualExpensesForMonth = (expenses: Expense[], month: string, year: number, category?: string) =>
   expenses
     .filter(e => e.active !== false)
@@ -102,6 +146,12 @@ export const getManualExpensesForMonth = (expenses: Expense[], month: string, ye
     .filter(e => !category || e.category === category)
     .reduce((sum, e) => sum + e.amount, 0);
 
+/**
+ * Finds active fixed monthly expenses matching a predicate.
+ *
+ * Returns the matched total, or `fallback` when older/missing data does not
+ * contain the expected fixed expense row.
+ */
 export const getNamedFixedExpense = (expenses: Expense[], matcher: (expense: Expense) => boolean, fallback: number) => {
   const total = expenses
     .filter(e => e.active !== false)
@@ -111,6 +161,13 @@ export const getNamedFixedExpense = (expenses: Expense[], matcher: (expense: Exp
   return total || fallback;
 };
 
+/**
+ * Calculates one month of the annual report for a specific year.
+ *
+ * Closed weeks are included when they overlap the month, but only the days
+ * that actually fall inside the month are summed. Operating expenses are then
+ * layered on top to produce total expense, profit, and activity flags.
+ */
 export const monthTotalsForYear = (weeks: WeekRow[], expenses: Expense[], month: string, year: number) => {
   const range = getMonthRange(year, month);
   const monthWeeks = weeks
@@ -166,11 +223,23 @@ export const monthTotalsForYear = (weeks: WeekRow[], expenses: Expense[], month:
   };
 };
 
+/**
+ * Convenience wrapper for older call sites that only provide a month name.
+ *
+ * It infers the year from the first week with that month, falling back to the
+ * current year when no matching week exists.
+ */
 export const monthTotals = (weeks: WeekRow[], expenses: Expense[], month: string) => {
   const year = weeks.find(w => w.month === month)?.year || new Date().getFullYear();
   return monthTotalsForYear(weeks, expenses, month, year);
 };
 
+/**
+ * Returns all years represented by the stored weeks.
+ *
+ * Both start and end years are included so a crossing week near New Year can
+ * make both years selectable in the UI.
+ */
 export const getAvailableYears = (weeks: WeekRow[]) => {
   const years = new Set<number>();
   weeks.map(normalizeWeekDates).forEach(w => {
@@ -180,6 +249,12 @@ export const getAvailableYears = (weeks: WeekRow[]) => {
   return Array.from(years).sort((a, b) => b - a);
 };
 
+/**
+ * Builds the month rows that should appear in the annual report.
+ *
+ * The studio starts from July 2025, so that first year hides earlier months.
+ * Later years show January through the latest month that has activity.
+ */
 export const getVisibleMonthsForYear = (weeks: WeekRow[], expenses: Expense[], year: number) => {
   const startIndex = year === 2025 ? 6 : 0; // Július
   const rows = months.map((month, index) => ({ month, index, totals: monthTotalsForYear(weeks, expenses, month, year) }));
@@ -189,6 +264,12 @@ export const getVisibleMonthsForYear = (weeks: WeekRow[], expenses: Expense[], y
 };
 
 
+/**
+ * Groups week records by calendar week for the weekly summary table.
+ *
+ * This lets imported historical rows and manually edited rows for the same
+ * Monday-Sunday period display as one calendar-week row.
+ */
 export const aggregateWeeksForCalendarView = (weeks: WeekRow[]): WeekRow[] => {
   const groups = new Map<string, WeekRow[]>();
 
@@ -226,6 +307,12 @@ export const aggregateWeeksForCalendarView = (weeks: WeekRow[]): WeekRow[] => {
 };
 
 
+/**
+ * Finds the newest year/month that has report activity.
+ *
+ * Used by the UI to open dashboards on the latest meaningful period instead
+ * of an empty month.
+ */
 export const getLatestActivityPeriod = (weeks: WeekRow[], expenses: Expense[]) => {
   const years = getAvailableYears(weeks);
   const candidateYears = years.length ? years : [new Date().getFullYear()];
