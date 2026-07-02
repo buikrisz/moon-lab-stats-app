@@ -1,6 +1,6 @@
 import type { DayRow, Expense, WeekRow } from '../types';
 import { safeDiv } from './format';
-import { formatWeekLabel, getMonthNameFromIso, getMondayOfWeek, getMonthRange, getWeekEnd, normalizeWeekDates, rangesOverlap } from './date';
+import { addDays, formatWeekLabel, getMonthNameFromIso, getMondayOfWeek, getMonthRange, getWeekEnd, normalizeWeekDates, rangesOverlap } from './date';
 
 export const months = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
 
@@ -66,6 +66,33 @@ export const weekTotals = (week: WeekRow) => {
   };
 };
 
+const weekLevelExtraRevenue = (week: WeekRow) =>
+  week.expiredPasses + week.studioRent + (week.extraRevenues || []).reduce((sum, item) => sum + item.amount, 0);
+
+const weekTotalsForMonthRange = (week: WeekRow, range: { start: string; end: string }) => {
+  const daysInMonth = week.days.filter((_, index) => {
+    const dayDate = addDays(week.startDate, index);
+    return dayDate >= range.start && dayDate <= range.end;
+  });
+  const d = sumDays(daysInMonth);
+  const weekExtraRevenue = weekLevelExtraRevenue(week);
+  const includeWeekExtraRevenue = week.startDate >= range.start && week.startDate <= range.end;
+  const extraRevenue = d.extraRevenue + (includeWeekExtraRevenue ? weekExtraRevenue : 0);
+  const revenue = d.revenue + (includeWeekExtraRevenue ? weekExtraRevenue : 0);
+  const expense = d.trainerCost;
+
+  return {
+    ...d,
+    revenue,
+    extraRevenue,
+    expense,
+    profit: revenue - expense,
+    avg: safeDiv(d.participants, d.heldHours),
+    hasDailyActivity: daysInMonth.length > 0 && (d.revenue > 0 || d.heldHours > 0 || d.fullHours > 0 || d.participants > 0 || d.trainerCost > 0 || d.extraRevenue > 0),
+    hasWeekLevelExtraRevenue: includeWeekExtraRevenue && weekExtraRevenue > 0,
+  };
+};
+
 
 export const getManualExpensesForMonth = (expenses: Expense[], month: string, year: number, category?: string) =>
   expenses
@@ -88,18 +115,19 @@ export const monthTotalsForYear = (weeks: WeekRow[], expenses: Expense[], month:
   const range = getMonthRange(year, month);
   const monthWeeks = weeks
     .map(normalizeWeekDates)
-    .filter(w => w.status === 'closed' && w.startDate >= range.start && w.startDate <= range.end);
+    .filter(w => w.status === 'closed' && rangesOverlap(w.startDate, w.endDate, range.start, range.end));
 
   const totals = monthWeeks.reduce((acc, w) => {
-    const t = weekTotals(w);
+    const t = weekTotalsForMonthRange(w, range);
     acc.revenue += t.revenue;
     acc.heldHours += t.heldHours;
     acc.fullHours += t.fullHours;
     acc.participants += t.participants;
     acc.trainerCost += t.trainerCost;
     acc.extraRevenue += t.extraRevenue;
+    acc.hasActivity = acc.hasActivity || t.hasDailyActivity || t.hasWeekLevelExtraRevenue;
     return acc;
-  }, { revenue: 0, heldHours: 0, fullHours: 0, participants: 0, trainerCost: 0, extraRevenue: 0 });
+  }, { revenue: 0, heldHours: 0, fullHours: 0, participants: 0, trainerCost: 0, extraRevenue: 0, hasActivity: false });
 
   const pos = totals.revenue * 0.02;
   const rent = getNamedFixedExpense(expenses, e => e.expenseType === 'fixed' && e.category === 'Bérlet' || /bérlet|bérleti/i.test(e.name), 350000);
@@ -134,7 +162,7 @@ export const monthTotalsForYear = (weeks: WeekRow[], expenses: Expense[], month:
     expense,
     profit: totalRevenue - expense,
     avg: safeDiv(totals.participants, totals.heldHours),
-    hasActivity: monthWeeks.length > 0 || szamlazz > 0 || ads > 0 || utilities > 0 || otherManual > 0,
+    hasActivity: totals.hasActivity || szamlazz > 0 || ads > 0 || utilities > 0 || otherManual > 0,
   };
 };
 
