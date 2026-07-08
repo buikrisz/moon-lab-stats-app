@@ -32,7 +32,7 @@ const pathToPage: Record<string, Page> = Object.entries(pageToPath).reduce((acc,
 }, {} as Record<string, Page>);
 
 function AuthenticatedAppShell() {
-  const { data, isLoading, isSaving, error, setWeeks, setPasses, setExpenses, setSettings } = useAppData();
+  const { data, isLoading, isSaving, error, setWeeks, setPasses, setExpenses, setSettings, replaceDataFromServer } = useAppData();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -122,7 +122,7 @@ function AuthenticatedAppShell() {
         setSelectedMonth={setMonth}
       />
     ),
-    settings: () => <SettingsPage settings={data.settings} setSettings={setSettings} />,
+    settings: () => <SettingsPage settings={data.settings} setSettings={setSettings} onDataRestored={replaceDataFromServer} />,
   };
 
   const activeRoute = (routeComponents[page] || routeComponents.dashboard)();

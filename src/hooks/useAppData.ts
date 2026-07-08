@@ -63,7 +63,9 @@ export const useAppData = () => {
       if (!data) return;
       saveData({ ...data, settings });
     },
-    setFullData: (nextData: AppData) => saveData(nextData),    refetch: fetchData,
+    setFullData: (nextData: AppData) => saveData(nextData),
+    replaceDataFromServer: (nextData: AppData) => setData(nextData),
+    refetch: fetchData,
   }), [data]);
 
   return { data, isLoading, isSaving, error, ...actions };
