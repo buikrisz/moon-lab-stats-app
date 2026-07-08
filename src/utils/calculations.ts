@@ -141,10 +141,64 @@ const weekTotalsForMonthRange = (week: WeekRow, range: { start: string; end: str
 export const getManualExpensesForMonth = (expenses: Expense[], month: string, year: number, category?: string) =>
   expenses
     .filter(e => e.active !== false)
-    .filter(e => (e.expenseType === 'monthly-manual' || e.recurrence === 'one-time'))
+    .filter(e => e.expenseType === 'monthly-manual' || (e.recurrence === 'one-time' && e.expenseType !== 'fixed'))
     .filter(e => e.month === month && e.year === year)
     .filter(e => !category || e.category === category)
     .reduce((sum, e) => sum + e.amount, 0);
+
+const isFixedExpense = (expense: Expense) =>
+  expense.expenseType === 'fixed' ||
+  (!expense.expenseType && /bérlet|bérleti|tisztító|motibro/i.test(expense.name));
+
+const isFixedTemplate = (expense: Expense) =>
+  isFixedExpense(expense) && !expense.year && expense.recurrence === 'monthly';
+
+/**
+ * Returns fixed expenses as they should apply to one month.
+ *
+ * Global fixed rows are treated as defaults. A monthly fixed row with
+ * `baseExpenseId` overrides that default only for its selected year/month.
+ */
+export const getFixedExpensesForMonth = (expenses: Expense[], month: string, year: number) => {
+  const monthIndex = months.indexOf(month);
+  const targetPeriod = year * 12 + monthIndex;
+  const fixedRecords = expenses.filter(isFixedExpense);
+  const templates = fixedRecords
+    .filter(e => e.active !== false)
+    .filter(isFixedTemplate);
+  const monthlyFixedRecords = fixedRecords
+    .filter(e => e.year && e.month && months.includes(e.month));
+
+  const getSeriesId = (expense: Expense) => expense.baseExpenseId || expense.id;
+  const getPeriod = (expense: Expense) => (expense.year || 0) * 12 + months.indexOf(expense.month);
+  const seriesIds = Array.from(new Set([
+    ...templates.map(expense => expense.id),
+    ...monthlyFixedRecords.map(getSeriesId),
+  ]));
+
+  return seriesIds.flatMap(seriesId => {
+    const template = templates.find(expense => expense.id === seriesId);
+    const current = monthlyFixedRecords.find(expense => getSeriesId(expense) === seriesId && expense.year === year && expense.month === month);
+    if (current) return current.active === false ? [] : [current];
+
+    const previous = monthlyFixedRecords
+      .filter(expense => expense.active !== false)
+      .filter(expense => getSeriesId(expense) === seriesId && getPeriod(expense) < targetPeriod)
+      .sort((a, b) => getPeriod(b) - getPeriod(a))[0];
+
+    const source = previous || template;
+    if (!source || source.active === false) return [];
+
+    return [{
+      ...source,
+      id: `${seriesId}-${year}-${month}`,
+      recurrence: 'one-time' as const,
+      year,
+      month,
+      baseExpenseId: seriesId,
+    }];
+  });
+};
 
 /**
  * Finds active fixed monthly expenses matching a predicate.
@@ -153,12 +207,12 @@ export const getManualExpensesForMonth = (expenses: Expense[], month: string, ye
  * contain the expected fixed expense row.
  */
 export const getNamedFixedExpense = (expenses: Expense[], matcher: (expense: Expense) => boolean, fallback: number) => {
-  const total = expenses
+  const matches = expenses
     .filter(e => e.active !== false)
-    .filter(e => e.expenseType === 'fixed' || e.recurrence === 'monthly')
-    .filter(matcher)
-    .reduce((sum, e) => sum + e.amount, 0);
-  return total || fallback;
+    .filter(isFixedExpense)
+    .filter(matcher);
+  if (!matches.length) return fallback;
+  return matches.reduce((sum, e) => sum + e.amount, 0);
 };
 
 /**
@@ -187,15 +241,19 @@ export const monthTotalsForYear = (weeks: WeekRow[], expenses: Expense[], month:
   }, { revenue: 0, heldHours: 0, fullHours: 0, participants: 0, trainerCost: 0, extraRevenue: 0, hasActivity: false });
 
   const pos = totals.revenue * 0.02;
-  const rent = getNamedFixedExpense(expenses, e => e.expenseType === 'fixed' && e.category === 'Bérlet' || /bérlet|bérleti/i.test(e.name), 350000);
-  const cleaning = getNamedFixedExpense(expenses, e => e.expenseType === 'fixed' && e.category === 'Üzemeltetés' || /tisztító/i.test(e.name), 10000);
-  const motibro = getNamedFixedExpense(expenses, e => e.expenseType === 'fixed' && /motibro/i.test(e.name), 21070);
+  const fixedExpensesForMonth = getFixedExpensesForMonth(expenses, month, year);
+  const isRent = (expense: Expense) => expense.baseExpenseId === 'exp-rent' || expense.id === 'exp-rent' || (expense.expenseType === 'fixed' && expense.category === 'Bérlet') || /bérlet|bérleti/i.test(expense.name);
+  const isCleaning = (expense: Expense) => expense.baseExpenseId === 'exp-clean' || expense.id === 'exp-clean' || (expense.expenseType === 'fixed' && expense.category === 'Üzemeltetés') || /tisztító/i.test(expense.name);
+  const isMotibro = (expense: Expense) => expense.baseExpenseId === 'exp-motibro' || expense.id === 'exp-motibro' || (expense.expenseType === 'fixed' && /motibro/i.test(expense.name));
+  const rent = getNamedFixedExpense(fixedExpensesForMonth, isRent, 350000);
+  const cleaning = getNamedFixedExpense(fixedExpensesForMonth, isCleaning, 10000);
+  const motibro = getNamedFixedExpense(fixedExpensesForMonth, isMotibro, 21070);
   const szamlazz = getManualExpensesForMonth(expenses, month, year, 'Számlázz.hu');
   const ads = getManualExpensesForMonth(expenses, month, year, 'Hirdetés');
   const utilities = getManualExpensesForMonth(expenses, month, year, 'Rezsi');
   const otherManual = expenses
     .filter(e => e.active !== false)
-    .filter(e => (e.expenseType === 'monthly-manual' || e.recurrence === 'one-time'))
+    .filter(e => e.expenseType === 'monthly-manual' || (e.recurrence === 'one-time' && e.expenseType !== 'fixed'))
     .filter(e => e.month === month && e.year === year)
     .filter(e => !['Számlázz.hu', 'Hirdetés', 'Rezsi'].includes(e.category))
     .reduce((sum, e) => sum + e.amount, 0);

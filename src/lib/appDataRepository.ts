@@ -25,14 +25,15 @@ const initialAppData: AppData = {
 
 function normalizeExpenses(expenses: AppData['expenses']): AppData['expenses'] {
   const normalized = expenses.map(expense => {
-    if (/bérlet|bérleti/i.test(expense.name)) {
-      return { ...expense, name: 'Bérleti díj', category: 'Bérlet', amount: 350000, recurrence: 'monthly' as const, month: 'Minden hónap', active: true, expenseType: 'fixed' as const };
+    if (expense.baseExpenseId) {
+      return { ...expense, recurrence: 'one-time' as const, active: expense.active !== false, expenseType: 'fixed' as const };
     }
-    if (/tisztító/i.test(expense.name)) {
-      return { ...expense, name: 'Tisztítószerek', category: 'Üzemeltetés', amount: 10000, recurrence: 'monthly' as const, month: 'Minden hónap', active: true, expenseType: 'fixed' as const };
-    }
-    if (/motibro/i.test(expense.name)) {
-      return { ...expense, name: 'Motibro', category: 'Szoftver', amount: 21070, recurrence: 'monthly' as const, month: 'Minden hónap', active: true, expenseType: 'fixed' as const };
+
+    if (!expense.year && (
+      ['exp-rent', 'exp-clean', 'exp-motibro'].includes(expense.id) ||
+      /bérlet|bérleti|tisztító|motibro/i.test(expense.name)
+    )) {
+      return { ...expense, recurrence: 'monthly' as const, month: 'Minden hónap', active: true, expenseType: 'fixed' as const };
     }
     return { ...expense, active: expense.active !== false };
   });

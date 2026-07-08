@@ -1,9 +1,9 @@
 "use client";
 
 import { Edit3, Plus, Save, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Expense } from '../../types';
-import { months } from '../../utils/calculations';
+import { getFixedExpensesForMonth, months } from '../../utils/calculations';
 import { huf } from '../../utils/format';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -20,23 +20,42 @@ type Props = {
 
 export function ExpensesPage({ expenses, setExpenses, variableCategories, selectedYear, selectedMonth, setSelectedYear, setSelectedMonth }: Props) {
   const currentYear = new Date().getFullYear();
+  const currentMonthIndex = new Date().getMonth();
   const [modal, setModal] = useState<Expense | 'new-fixed' | 'new-manual' | null>(null);
   const year = selectedYear;
   const month = selectedMonth;
 
   const years = useMemo(() => {
     const fromExpenses = expenses.map(e => e.year).filter(Boolean) as number[];
-    return Array.from(new Set([2025, 2026, currentYear, ...fromExpenses])).sort((a, b) => b - a);
+    return Array.from(new Set([2025, currentYear, ...fromExpenses]))
+      .filter(y => y <= currentYear)
+      .sort((a, b) => b - a);
   }, [expenses, currentYear]);
 
-  const fixedExpenses = expenses.filter(e => e.active !== false && (
-    e.expenseType === 'fixed' ||
-    /bérlet|bérleti|tisztító|motibro/i.test(e.name)
-  ));
+  const selectableMonths = useMemo(
+    () => year === currentYear ? months.slice(0, currentMonthIndex + 1) : months,
+    [year, currentYear, currentMonthIndex]
+  );
+
+  useEffect(() => {
+    if (selectedYear > currentYear) {
+      setSelectedYear(currentYear);
+      return;
+    }
+
+    if (selectedYear === currentYear && months.indexOf(selectedMonth) > currentMonthIndex) {
+      setSelectedMonth(months[currentMonthIndex]);
+    }
+  }, [selectedYear, selectedMonth, currentYear, currentMonthIndex, setSelectedYear, setSelectedMonth]);
+
+  const fixedExpenses = useMemo(
+    () => getFixedExpensesForMonth(expenses, month, year),
+    [expenses, month, year]
+  );
 
   const monthlyExpenses = expenses.filter(e => e.active !== false && (
     e.expenseType === 'monthly-manual' ||
-    (e.recurrence === 'one-time' && Boolean(e.year))
+    (e.recurrence === 'one-time' && e.expenseType !== 'fixed' && Boolean(e.year))
   ));
 
   const filteredMonthlyExpenses = monthlyExpenses.filter(e => e.year === year && e.month === month);
@@ -45,15 +64,17 @@ export function ExpensesPage({ expenses, setExpenses, variableCategories, select
     const normalized = {
       ...expense,
       active: true,
-      name: expense.category,
+      name: expense.expenseType === 'monthly-manual' ? expense.category : expense.name,
+      recurrence: expense.expenseType === 'fixed' && expense.year ? 'one-time' as const : expense.recurrence,
     };
 
-    setExpenses(prev => modal === 'new-fixed' || modal === 'new-manual'
-      ? [normalized, ...prev]
-      : prev.map(e => e.id === normalized.id ? normalized : e)
-    );
+    setExpenses(prev => {
+      const exists = prev.some(e => e.id === normalized.id);
+      if (modal === 'new-fixed' || modal === 'new-manual' || !exists) return [normalized, ...prev];
+      return prev.map(e => e.id === normalized.id ? normalized : e);
+    });
 
-    if (normalized.expenseType === 'monthly-manual') {
+    if (normalized.expenseType === 'monthly-manual' || normalized.expenseType === 'fixed') {
       if (normalized.year) setSelectedYear(normalized.year);
       setSelectedMonth(normalized.month);
     }
@@ -61,9 +82,18 @@ export function ExpensesPage({ expenses, setExpenses, variableCategories, select
     setModal(null);
   };
 
-  const remove = (id: string) => {
+  const remove = (expense: Expense) => {
     if (confirm('Biztos törlöd ezt a költséget?')) {
-      setExpenses(prev => prev.filter(e => e.id !== id));
+      if (expense.expenseType === 'fixed' && expense.baseExpenseId) {
+        const inactiveOverride = { ...expense, active: false, recurrence: 'one-time' as const };
+        setExpenses(prev => prev.some(e => e.id === expense.id)
+          ? prev.map(e => e.id === expense.id ? inactiveOverride : e)
+          : [inactiveOverride, ...prev]
+        );
+        return;
+      }
+
+      setExpenses(prev => prev.filter(e => e.id !== expense.id));
     }
   };
 
@@ -73,21 +103,35 @@ export function ExpensesPage({ expenses, setExpenses, variableCategories, select
         <div className="panelHead">
           <div>
             <h2>Fix havi költségek</h2>
-            <p className="panelSub">Ezek minden hónapban automatikusan bekerülnek az éves kimutatásba.</p>
+            <p className="panelSub">A kiválasztott hónap fix költségei. Ha módosítasz egy alap fix költséget, csak erre a hónapra mentünk eltérést.</p>
           </div>
-          <Button variant="primary" onClick={() => setModal('new-fixed')}><Plus size={17}/> Új fix költség</Button>
+          <div className="actions">
+            <label className="selectWrap">
+              <select value={year} onChange={e => setSelectedYear(Number(e.target.value))}>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </label>
+            <label className="selectWrap">
+              <select value={month} onChange={e => setSelectedMonth(e.target.value)}>
+                {selectableMonths.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </label>
+            <Button variant="primary" onClick={() => setModal('new-fixed')}><Plus size={17}/> Új fix költség</Button>
+          </div>
         </div>
 
         <table>
-          <thead><tr><th>Név</th><th>Kategória</th><th>Összeg</th><th>Műveletek</th></tr></thead>
+          <thead><tr><th>Név</th><th>Kategória</th><th>Év</th><th>Hónap</th><th>Összeg</th><th>Műveletek</th></tr></thead>
           <tbody>{fixedExpenses.map(e => (
             <tr key={e.id}>
               <td><b>{e.name}</b></td>
               <td>{e.category}</td>
+              <td>{e.year}</td>
+              <td>{e.month}</td>
               <td>{huf(e.amount)}</td>
               <td className="rowActions">
                 <Button variant="icon" onClick={() => setModal(e)}><Edit3 size={15}/></Button>
-                <Button variant="icon" onClick={() => remove(e.id)}><Trash2 size={15}/></Button>
+                <Button variant="icon" onClick={() => remove(e)}><Trash2 size={15}/></Button>
               </td>
             </tr>
           ))}</tbody>
@@ -108,7 +152,7 @@ export function ExpensesPage({ expenses, setExpenses, variableCategories, select
             </label>
             <label className="selectWrap">
               <select value={month} onChange={e => setSelectedMonth(e.target.value)}>
-                {months.map(m => <option key={m}>{m}</option>)}
+                {selectableMonths.map(m => <option key={m}>{m}</option>)}
               </select>
             </label>
             <Button variant="primary" onClick={() => setModal('new-manual')}><Plus size={17}/> Új havi költség</Button>
@@ -126,7 +170,7 @@ export function ExpensesPage({ expenses, setExpenses, variableCategories, select
                 <td>{huf(e.amount)}</td>
                 <td className="rowActions">
                   <Button variant="icon" onClick={() => setModal(e)}><Edit3 size={15}/></Button>
-                  <Button variant="icon" onClick={() => remove(e.id)}><Trash2 size={15}/></Button>
+                  <Button variant="icon" onClick={() => remove(e)}><Trash2 size={15}/></Button>
                 </td>
               </tr>
             ))}
@@ -139,7 +183,7 @@ export function ExpensesPage({ expenses, setExpenses, variableCategories, select
 
       {modal && <ExpenseModal
         expense={modal === 'new-fixed'
-          ? { id: crypto.randomUUID(), name: 'Bérleti díj', category: 'Bérlet', amount: 0, recurrence: 'monthly', month: 'Minden hónap', active: true, expenseType: 'fixed' }
+          ? { id: crypto.randomUUID(), name: 'Bérleti díj', category: 'Bérlet', amount: 0, recurrence: 'one-time', month, year, active: true, expenseType: 'fixed' }
           : modal === 'new-manual'
             ? { id: crypto.randomUUID(), name: variableCategories[0] || 'Számlázz.hu', category: variableCategories[0] || 'Számlázz.hu', amount: 0, recurrence: 'one-time', month, year, active: true, expenseType: 'monthly-manual' }
             : modal}
@@ -192,7 +236,7 @@ function ExpenseModal({ expense, mode, variableCategories, onClose, onSave }: { 
           active: true,
           name: mode === 'manual' ? form.category : form.name,
           expenseType: mode === 'fixed' ? 'fixed' : 'monthly-manual',
-          recurrence: mode === 'fixed' ? 'monthly' : 'one-time',
+          recurrence: mode === 'fixed' && !form.year ? 'monthly' : 'one-time',
         })}><Save size={16}/> Mentés</Button>
       </div>
     </Modal>

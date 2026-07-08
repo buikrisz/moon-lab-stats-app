@@ -79,6 +79,7 @@ export type Expense = {
   active: boolean;
   expenseType?: ExpenseType;
   year?: number;
+  baseExpenseId?: string;
 };
 
 export type Settings = {
