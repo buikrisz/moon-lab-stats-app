@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Calendar, CreditCard, Home, LineChart, Menu, Settings, WalletCards, X } from 'lucide-react';
+import { BarChart3, Calendar, CalendarDays, CreditCard, Home, LineChart, Menu, Settings, WalletCards, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Page, WeekRow } from '../../types';
 
@@ -9,6 +9,7 @@ const navItems = [
   { page: 'weekly-entry', label: 'Heti rögzítés', icon: Calendar },
   { page: 'weekly-summary', label: 'Heti lebontás', icon: BarChart3 },
   { page: 'monthly-summary', label: 'Éves kimutatások', icon: LineChart },
+  { page: 'calendar', label: 'Naptár', icon: CalendarDays },
   { page: 'passes', label: 'Bérletek / árak', icon: WalletCards },
   { page: 'expenses', label: 'Költségek', icon: CreditCard },
   { page: 'settings', label: 'Beállítások', icon: Settings },
@@ -19,6 +20,7 @@ type Props = {
   setPage: (page: Page) => void;
   currentWeek?: WeekRow;
   onCurrentWeekClick?: () => void;
+  forceCollapsed?: boolean;
 };
 
 function SidebarContent({ page, setPage, currentWeek, onCurrentWeekClick, closeMobile }: Props & { closeMobile?: () => void }) {
@@ -72,14 +74,16 @@ export function Sidebar(props: Props) {
 
   return (
     <>
-      <button className="mobileMenuButton" onClick={() => setIsMobileOpen(true)}><Menu size={20}/> Menü</button>
+      <button className={`mobileMenuButton ${props.forceCollapsed ? 'showMenuButton' : ''}`} onClick={() => setIsMobileOpen(true)}><Menu size={20}/> Menü</button>
 
-      <aside className="sidebar desktopSidebar">
-        <SidebarContent {...props} />
-      </aside>
+      {!props.forceCollapsed && (
+        <aside className="sidebar desktopSidebar">
+          <SidebarContent {...props} />
+        </aside>
+      )}
 
       {isMobileOpen && (
-        <div className="mobileSidebarBackdrop" onClick={() => setIsMobileOpen(false)}>
+        <div className={`mobileSidebarBackdrop ${props.forceCollapsed ? 'forceSidebarBackdrop' : ''}`} onClick={() => setIsMobileOpen(false)}>
           <aside className="sidebar mobileSidebar" onClick={e => e.stopPropagation()}>
             <button className="mobileCloseButton" onClick={() => setIsMobileOpen(false)}><X size={18}/> Bezárás</button>
             <SidebarContent {...props} closeMobile={() => setIsMobileOpen(false)} />

@@ -9,6 +9,7 @@ const titles: Record<Page, string> = {
   'weekly-entry': 'Heti rögzítés',
   'weekly-summary': 'Heti lebontás',
   'monthly-summary': 'Éves kimutatások',
+  calendar: 'Naptár',
   passes: 'Bérletek / árak',
   expenses: 'Költségek',
   settings: 'Beállítások',

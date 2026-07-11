@@ -8,6 +8,7 @@ const studioId = process.env.STUDIO_ID || 'default-studio';
 const initialAppData: AppData = {
   weeks: [],
   passes: [],
+  calendarEvents: [],
   expenses: [
     { id: 'exp-rent', name: 'Bérleti díj', category: 'Bérlet', amount: 350000, recurrence: 'monthly', month: 'Minden hónap', active: true, expenseType: 'fixed' },
     { id: 'exp-clean', name: 'Tisztítószerek', category: 'Üzemeltetés', amount: 10000, recurrence: 'monthly', month: 'Minden hónap', active: true, expenseType: 'fixed' },
@@ -69,6 +70,7 @@ function normalizeWeeks(weeks: AppData['weeks']): AppData['weeks'] {
 function normalizeAppData(data: AppData): AppData {
   return {
     ...data,
+    calendarEvents: data.calendarEvents || [],
     settings: {
       ...data.settings,
       studioName: data.settings.studioName || 'Moon Lab Pilates',

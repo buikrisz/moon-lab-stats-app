@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import type { AppData, Expense, PassType, Settings, WeekRow } from '../types';
+import type { AppData, CalendarEvent, Expense, PassType, Settings, WeekRow } from '../types';
 
 export const useAppData = () => {
   const [data, setData] = useState<AppData | null>(null);
@@ -58,6 +58,11 @@ export const useAppData = () => {
       if (!data) return;
       const expenses = typeof updater === 'function' ? updater(data.expenses) : updater;
       saveData({ ...data, expenses });
+    },
+    setCalendarEvents: (updater: CalendarEvent[] | ((events: CalendarEvent[]) => CalendarEvent[])) => {
+      if (!data) return;
+      const calendarEvents = typeof updater === 'function' ? updater(data.calendarEvents || []) : updater;
+      saveData({ ...data, calendarEvents });
     },
     setSettings: (settings: Settings) => {
       if (!data) return;

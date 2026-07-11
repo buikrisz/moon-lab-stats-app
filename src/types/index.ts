@@ -3,6 +3,7 @@ export type Page =
   | 'weekly-entry'
   | 'weekly-summary'
   | 'monthly-summary'
+  | 'calendar'
   | 'passes'
   | 'expenses'
   | 'settings';
@@ -91,9 +92,19 @@ export type Settings = {
   variableExpenseCategories?: string[];
 };
 
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  description?: string;
+};
+
 export type AppData = {
   weeks: WeekRow[];
   passes: PassType[];
   expenses: Expense[];
+  calendarEvents: CalendarEvent[];
   settings: Settings;
 };

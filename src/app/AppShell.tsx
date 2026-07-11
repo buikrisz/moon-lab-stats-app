@@ -13,6 +13,7 @@ import { MonthlySummaryPage } from '../features/monthly-summary/MonthlySummaryPa
 import { PassesPage } from '../features/passes/PassesPage';
 import { ExpensesPage } from '../features/expenses/ExpensesPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { CalendarPage } from '../features/calendar/CalendarPage';
 import { AuthGate } from '../components/auth/AuthGate';
 import { getAvailableYears, getLatestActivityPeriod } from '../utils/calculations';
 
@@ -21,6 +22,7 @@ const pageToPath: Record<Page, string> = {
   'weekly-entry': '/heti-rogzites',
   'weekly-summary': '/heti-lebontas',
   'monthly-summary': '/eves-kimutatasok',
+  calendar: '/naptar',
   passes: '/berletek-arak',
   expenses: '/koltsegek',
   settings: '/beallitasok',
@@ -32,7 +34,7 @@ const pathToPage: Record<string, Page> = Object.entries(pageToPath).reduce((acc,
 }, {} as Record<string, Page>);
 
 function AuthenticatedAppShell() {
-  const { data, isLoading, isSaving, error, setWeeks, setPasses, setExpenses, setSettings, replaceDataFromServer } = useAppData();
+  const { data, isLoading, isSaving, error, setWeeks, setPasses, setExpenses, setCalendarEvents, setSettings, replaceDataFromServer } = useAppData();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -110,6 +112,7 @@ function AuthenticatedAppShell() {
       />
     ),
     'monthly-summary': () => <MonthlySummaryPage weeks={data.weeks} expenses={data.expenses} selectedYear={year} />,
+    calendar: () => <CalendarPage events={data.calendarEvents || []} setEvents={setCalendarEvents} />,
     passes: () => <PassesPage passes={data.passes} setPasses={setPasses} />,
     expenses: () => (
       <ExpensesPage
@@ -128,10 +131,11 @@ function AuthenticatedAppShell() {
   const activeRoute = (routeComponents[page] || routeComponents.dashboard)();
 
   return (
-    <div className="app">
+    <div className={`app ${page === 'calendar' ? 'calendarShell' : ''}`}>
       <Sidebar
         page={page}
         setPage={setPage}
+        forceCollapsed={page === 'calendar'}
         currentWeek={openWeek}
         onCurrentWeekClick={() => {
           if (openWeek) setSelectedWeekId(openWeek.id);
