@@ -525,9 +525,9 @@ table{
 }
 .calendarEventChip{
   width:100%;
-  border:1px solid #cfe3d4;
-  background:#e8f3eb;
-  color:#1e4636;
+  border:1px solid var(--event-border,#cfe3d4);
+  background:var(--event-bg,#e8f3eb);
+  color:var(--event-text,#1e4636);
   border-radius:12px;
   padding:8px 9px;
   display:flex;
@@ -538,11 +538,11 @@ table{
   min-width:0;
 }
 .calendarEventChip:hover{
-  border-color:#8fbea0;
-  background:#dcefe3;
+  border-color:var(--event-hover-border,#8fbea0);
+  background:var(--event-hover-bg,#dcefe3);
 }
 .calendarEventChip span{
-  color:#5d6d64;
+  color:var(--event-muted,#5d6d64);
   font-size:11px;
   font-weight:900;
 }
@@ -630,9 +630,9 @@ table{
   position:absolute;
   left:10px;
   right:10px;
-  border:1px solid #8fbea0;
-  background:#dcefe3;
-  color:#1e4636;
+  border:1px solid var(--event-hover-border,#8fbea0);
+  background:var(--event-hover-bg,#dcefe3);
+  color:var(--event-text,#1e4636);
   border-radius:13px;
   padding:8px 10px;
   display:flex;
@@ -642,13 +642,13 @@ table{
   cursor:pointer;
   overflow:hidden;
   z-index:3;
-  box-shadow:0 8px 18px rgba(39,93,70,.12);
+  box-shadow:0 8px 18px var(--event-shadow,rgba(39,93,70,.12));
 }
 .calendarTimedEvent:hover{
-  background:#cfe6d5;
+  background:var(--event-bg,#cfe6d5);
 }
 .calendarTimedEvent span{
-  color:#5d6d64;
+  color:var(--event-muted,#5d6d64);
   font-size:11px;
   font-weight:900;
 }
@@ -761,9 +761,59 @@ table{
   width:5px;
   height:5px;
   border-radius:50%;
-  background:#275d46;
+  background:var(--event-accent,#275d46);
   position:absolute;
   bottom:2px;
+}
+.calendarEventColor-green{
+  --event-bg:#e8f3eb;
+  --event-hover-bg:#dcefe3;
+  --event-border:#cfe3d4;
+  --event-hover-border:#8fbea0;
+  --event-text:#1e4636;
+  --event-muted:#5d6d64;
+  --event-accent:#275d46;
+  --event-shadow:rgba(39,93,70,.12);
+}
+.calendarEventColor-yellow{
+  --event-bg:#fff4c7;
+  --event-hover-bg:#ffe9a1;
+  --event-border:#efd47a;
+  --event-hover-border:#d7ae37;
+  --event-text:#5b4510;
+  --event-muted:#78642c;
+  --event-accent:#d9a441;
+  --event-shadow:rgba(217,164,65,.18);
+}
+.calendarEventColor-red{
+  --event-bg:#ffe6e1;
+  --event-hover-bg:#ffd2ca;
+  --event-border:#efaaa1;
+  --event-hover-border:#d66d62;
+  --event-text:#6f241d;
+  --event-muted:#8a4b45;
+  --event-accent:#d66d50;
+  --event-shadow:rgba(214,109,80,.17);
+}
+.calendarEventColor-purple{
+  --event-bg:#eee9fb;
+  --event-hover-bg:#e0d7f7;
+  --event-border:#c9bced;
+  --event-hover-border:#8d80b8;
+  --event-text:#3d3165;
+  --event-muted:#655b86;
+  --event-accent:#8d80b8;
+  --event-shadow:rgba(141,128,184,.18);
+}
+.calendarEventColor-blue{
+  --event-bg:#e3f1f7;
+  --event-hover-bg:#cfe7f1;
+  --event-border:#a9cfdf;
+  --event-hover-border:#77a6b6;
+  --event-text:#1d4a5d;
+  --event-muted:#54717d;
+  --event-accent:#4f94ad;
+  --event-shadow:rgba(79,148,173,.18);
 }
 .calendarForm textarea{
   min-height:110px;
@@ -776,6 +826,56 @@ table{
 }
 .calendarDescriptionField{
   grid-column:1 / -1;
+}
+.calendarColorField{
+  border:0;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  font-weight:800;
+  color:#405048;
+  min-width:0;
+}
+.calendarColorField legend{
+  padding:0;
+  margin:0 0 7px;
+}
+.calendarColorOptions{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+}
+.calendarColorOption{
+  min-height:44px;
+  border:1px solid var(--event-border,#e2d8cd);
+  background:var(--event-bg,#fbf8f3);
+  color:var(--event-text,#405048);
+  border-radius:12px;
+  padding:8px 9px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-weight:900;
+  cursor:pointer;
+  min-width:0;
+}
+.calendarColorOption span{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:var(--event-accent,#275d46);
+  flex:0 0 auto;
+}
+.calendarColorOption:hover,
+.calendarColorOption.active{
+  border-color:var(--event-hover-border,#8fbea0);
+  background:var(--event-hover-bg,#dcefe3);
+}
+.calendarColorOption.active{
+  box-shadow:inset 0 0 0 2px var(--event-accent,#275d46);
 }
 .calendarCheckboxField{
   flex-direction:row !important;
@@ -884,6 +984,9 @@ table{
   }
   .calendarForm{
     grid-template-columns:1fr;
+  }
+  .calendarColorOptions{
+    grid-template-columns:repeat(2,minmax(0,1fr));
   }
   .calendarModalActions{
     display:grid;

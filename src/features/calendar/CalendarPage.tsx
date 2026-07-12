@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
-import type { CalendarEvent } from '../../types';
+import type { CalendarEvent, CalendarEventColor } from '../../types';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year';
 
@@ -23,6 +23,13 @@ const hours = Array.from({ length: 16 }, (_, index) => index + 6);
 const timelineStartMinute = 6 * 60;
 const timelineEndMinute = 22 * 60;
 const hourRowHeight = 58;
+const eventColorOptions: { value: CalendarEventColor; label: string }[] = [
+  { value: 'green', label: 'Zöld' },
+  { value: 'yellow', label: 'Sárga' },
+  { value: 'red', label: 'Piros' },
+  { value: 'purple', label: 'Lila' },
+  { value: 'blue', label: 'Kék' },
+];
 
 const pad = (value: number) => String(value).padStart(2, '0');
 const toDateKey = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -66,6 +73,7 @@ const normalizeAllDayRange = (startDate: string, endDate: string) => ({
   start: `${startDate}T00:00`,
   end: `${endDate}T23:59`,
 });
+const getEventColor = (event: Pick<CalendarEvent, 'color'>): CalendarEventColor => event.color || 'green';
 
 const formatEventTime = (event: CalendarEvent) => {
   const startDay = event.start.slice(0, 10);
@@ -92,6 +100,7 @@ const createTimedEvent = (date = new Date(), hour?: number): CalendarEvent => {
     end: toDateTimeInput(end),
     allDay: false,
     description: '',
+    color: 'green',
   };
 };
 
@@ -103,6 +112,7 @@ const createAllDayEvent = (date: Date): CalendarEvent => {
     ...normalizeAllDayRange(dateKey, dateKey),
     allDay: true,
     description: '',
+    color: 'green',
   };
 };
 
@@ -155,7 +165,7 @@ export function CalendarPage({ events, setEvents }: Props) {
 
   const openEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
-    setDraft({ ...event, allDay: event.allDay || false });
+    setDraft({ ...event, allDay: event.allDay || false, color: getEventColor(event) });
     setFormError('');
   };
 
@@ -166,7 +176,7 @@ export function CalendarPage({ events, setEvents }: Props) {
       return;
     }
 
-    const cleanEvent = { ...draft, title: draft.title.trim(), description: draft.description?.trim() || '' };
+    const cleanEvent = { ...draft, title: draft.title.trim(), description: draft.description?.trim() || '', color: getEventColor(draft) };
     if (cleanEvent.allDay) {
       const normalized = normalizeAllDayRange(cleanEvent.start.slice(0, 10), cleanEvent.end.slice(0, 10));
       cleanEvent.start = normalized.start;
@@ -195,7 +205,7 @@ export function CalendarPage({ events, setEvents }: Props) {
   };
 
   const renderEventChip = (event: CalendarEvent, compact = false) => (
-    <button className={`calendarEventChip ${compact ? 'compactEventChip' : ''}`} key={event.id} onClick={(e) => { e.stopPropagation(); openEvent(event); }}>
+    <button className={`calendarEventChip calendarEventColor-${getEventColor(event)} ${compact ? 'compactEventChip' : ''}`} key={event.id} onClick={(e) => { e.stopPropagation(); openEvent(event); }}>
       <span>{formatEventTime(event)}</span>
       <strong>{event.title}</strong>
     </button>
@@ -234,7 +244,7 @@ export function CalendarPage({ events, setEvents }: Props) {
                   <div className="calendarCellEvents">{dayEvents.map(event => renderEventChip(event, true))}</div>
                 </>
               )}
-              {mini && dayEvents.length > 0 && <span className="miniEventDot" />}
+              {mini && dayEvents.length > 0 && <span className={`miniEventDot calendarEventColor-${getEventColor(dayEvents[0])}`} />}
             </div>
           );
         })}
@@ -287,7 +297,7 @@ export function CalendarPage({ events, setEvents }: Props) {
               if (!segment) return null;
               return (
                 <button
-                  className="calendarTimedEvent"
+                  className={`calendarTimedEvent calendarEventColor-${getEventColor(event)}`}
                   key={event.id}
                   style={{ top: segment.top, height: segment.height }}
                   onClick={(clickEvent) => { clickEvent.stopPropagation(); openEvent(event); }}
@@ -371,6 +381,23 @@ export function CalendarPage({ events, setEvents }: Props) {
               Esemény neve
               <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Esemény neve" />
             </label>
+            <fieldset className="calendarColorField">
+              <legend>Szín</legend>
+              <div className="calendarColorOptions">
+                {eventColorOptions.map(option => (
+                  <button
+                    type="button"
+                    className={`calendarColorOption calendarEventColor-${option.value} ${getEventColor(draft) === option.value ? 'active' : ''}`}
+                    key={option.value}
+                    onClick={() => setDraft({ ...draft, color: option.value })}
+                    aria-pressed={getEventColor(draft) === option.value}
+                  >
+                    <span />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <label className="calendarCheckboxField">
               <input
                 type="checkbox"

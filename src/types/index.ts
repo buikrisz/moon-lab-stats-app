@@ -92,6 +92,8 @@ export type Settings = {
   variableExpenseCategories?: string[];
 };
 
+export type CalendarEventColor = 'green' | 'yellow' | 'red' | 'purple' | 'blue';
+
 export type CalendarEvent = {
   id: string;
   title: string;
@@ -99,6 +101,7 @@ export type CalendarEvent = {
   end: string;
   allDay?: boolean;
   description?: string;
+  color?: CalendarEventColor;
 };
 
 export type AppData = {
