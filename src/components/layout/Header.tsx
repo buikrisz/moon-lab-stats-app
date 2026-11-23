@@ -12,6 +12,7 @@ const titles: Record<Page, string> = {
   calendar: 'Naptár',
   passes: 'Bérletek / árak',
   expenses: 'Költségek',
+  guests: 'Vendégstatisztikák',
   settings: 'Beállítások',
 };
 

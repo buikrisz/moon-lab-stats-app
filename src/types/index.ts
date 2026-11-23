@@ -6,6 +6,7 @@ export type Page =
   | 'calendar'
   | 'passes'
   | 'expenses'
+  | 'guests'
   | 'settings';
 
 export type WeekStatus = 'open' | 'closed';

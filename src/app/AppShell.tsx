@@ -14,6 +14,7 @@ import { PassesPage } from '../features/passes/PassesPage';
 import { ExpensesPage } from '../features/expenses/ExpensesPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { CalendarPage } from '../features/calendar/CalendarPage';
+import { GuestsPage } from '../features/guests/GuestsPage';
 import { AuthGate } from '../components/auth/AuthGate';
 import { getAvailableYears, getLatestActivityPeriod } from '../utils/calculations';
 
@@ -25,6 +26,7 @@ const pageToPath: Record<Page, string> = {
   calendar: '/naptar',
   passes: '/berletek-arak',
   expenses: '/koltsegek',
+  guests: '/vendegstatisztikak',
   settings: '/beallitasok',
 };
 
@@ -125,6 +127,7 @@ function AuthenticatedAppShell() {
         setSelectedMonth={setMonth}
       />
     ),
+    guests: () => <GuestsPage />,
     settings: () => <SettingsPage settings={data.settings} setSettings={setSettings} onDataRestored={replaceDataFromServer} />,
   };
 

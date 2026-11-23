@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Calendar, CalendarDays, CreditCard, Home, LineChart, Menu, Settings, WalletCards, X } from 'lucide-react';
+import { BarChart3, Calendar, CalendarDays, CreditCard, Home, LineChart, Menu, Settings, WalletCards, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Page, WeekRow } from '../../types';
 
@@ -12,6 +12,7 @@ const navItems = [
   { page: 'calendar', label: 'Naptár', icon: CalendarDays },
   { page: 'passes', label: 'Bérletek / árak', icon: WalletCards },
   { page: 'expenses', label: 'Költségek', icon: CreditCard },
+  { page: 'guests', label: 'Vendégstatisztikák', icon: Users },
   { page: 'settings', label: 'Beállítások', icon: Settings },
 ] as const;
 
