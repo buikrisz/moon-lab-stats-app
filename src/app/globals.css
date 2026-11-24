@@ -186,6 +186,24 @@ table{
 .guestInsightGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .guestInsightGrid .panel{min-width:0}
 .guestPieChart{height:300px;margin-top:12px;min-width:0}
+.guestSegmentToggles{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;background:#f8f5ef;border:1px solid #e9e1d7;border-radius:14px}
+.guestSegmentToggles>strong{color:#334b3c;font-size:13px}
+.guestSegmentToggles button{border:1px solid #d9e3d9;background:#edf5ed;color:#285d46;border-radius:999px;padding:8px 12px;font-weight:850;cursor:pointer}
+.guestSegmentToggles button.excluded{background:#fff0e9;border-color:#edcbbd;color:#9b4b37}
+.guestSegmentManager{max-width:none;margin-bottom:14px}
+.guestSegmentColumns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.guestSegmentColumn{min-width:0;padding:14px;background:#f8f5ef;border:1px solid #e9e1d7;border-radius:15px}
+.guestSegmentColumn h4{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;color:#285d46;font-size:15px}
+.guestSegmentColumn h4 span{padding:3px 9px;background:#e6efe6;border-radius:999px;font-size:12px}
+.guestSegmentAdd{display:flex;gap:8px;margin-bottom:12px}
+.guestSegmentAdd input{min-width:0;flex:1}
+.guestSegmentList{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow:auto}
+.guestSegmentItem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:#fff;border:1px solid #e9e1d7;border-radius:11px}
+.guestSegmentItem>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.guestSegmentItem strong{overflow:hidden;text-overflow:ellipsis;color:#344b3d;font-size:13px}
+.guestSegmentItem small{color:#77837b;font-size:11px}
+.guestSegmentRemove{flex:none;border:0;background:transparent;color:#a34c35;font-weight:800;cursor:pointer}
+.guestSegmentRemove:disabled,.guestSegmentAdd .btn:disabled{opacity:.5;cursor:wait}
 .guestChart{height:300px;margin-top:18px;min-width:0}
 .guestChart.tall{height:360px}
 .guestImport{max-width:980px}
@@ -208,6 +226,7 @@ table{
 .guestSubhead{margin-top:24px!important}
 @media(max-width:800px){.guestStats{grid-template-columns:1fr}.guestChart{height:260px}.guestChart.tall{height:300px}}
 @media(max-width:800px){.guestImportGrid{grid-template-columns:1fr}}
+@media(max-width:800px){.guestSegmentColumns{grid-template-columns:1fr}}
 @media(max-width:800px){.guestImportRules{grid-template-columns:1fr}.latestImportBadge{align-self:flex-start}}
 @media(max-width:900px){.guestInsightGrid{grid-template-columns:1fr}}
 @media(max-width:700px){.guestComparePeriods,.guestCompareGrid{grid-template-columns:1fr}.guestPeriodResult{margin-left:0;width:100%}.guestPeriodBar .segmented{width:100%;justify-content:space-between}.guestPeriodBar .segmented button{flex:1;padding:8px 5px;font-size:12px}.guestPeriodBar .chartToggle{flex-wrap:wrap}.guestPeriodBar .chartToggle span{min-width:100%;width:100%}.guestFilterCount{margin-left:0}}

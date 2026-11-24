@@ -74,6 +74,15 @@ export function GuestsPage() {
   const [visits, setVisits] = useState<GuestVisit[]>([]);
   const [purchases, setPurchases] = useState<GuestPurchase[]>([]);
   const [activityImports, setActivityImports] = useState<GuestActivityImport[]>([]);
+  const [familyIds, setFamilyIds] = useState<string[]>([]);
+  const [influencerIds, setInfluencerIds] = useState<string[]>([]);
+  const [familyIdInput, setFamilyIdInput] = useState('');
+  const [influencerIdInput, setInfluencerIdInput] = useState('');
+  const [excludeFamily, setExcludeFamily] = useState(false);
+  const [excludeInfluencers, setExcludeInfluencers] = useState(false);
+  const [segmentBusy, setSegmentBusy] = useState(false);
+  const [segmentMessage, setSegmentMessage] = useState('');
+  const [segmentError, setSegmentError] = useState('');
   const [section, setSection] = useState<Section>('overview');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -104,19 +113,51 @@ export function GuestsPage() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [guestResponse, activityResponse] = await Promise.all([
-        fetch('/api/guests', { cache: 'no-store' }), fetch('/api/guest-activity', { cache: 'no-store' }),
+      const [guestResponse, activityResponse, segmentResponse] = await Promise.all([
+        fetch('/api/guests', { cache: 'no-store' }), fetch('/api/guest-activity', { cache: 'no-store' }), fetch('/api/guest-segments', { cache: 'no-store' }),
       ]);
-      const [guestData, activityData] = await Promise.all([guestResponse.json(), activityResponse.json()]);
+      const [guestData, activityData, segmentData] = await Promise.all([guestResponse.json(), activityResponse.json(), segmentResponse.json()]);
       if (!guestResponse.ok) throw new Error(guestData.error || 'Nem sikerült betölteni a vendégeket.');
       if (!activityResponse.ok) throw new Error(activityData.error || 'Nem sikerült betölteni az óra- és vásárlási adatokat.');
+      if (!segmentResponse.ok) throw new Error(segmentData.error || 'Nem sikerült betölteni a csoportlistákat.');
       setGuests(guestData); setVisits(activityData.visits || []); setPurchases(activityData.purchases || []); setActivityImports(activityData.imports || []);
+      setFamilyIds(segmentData.familyIds || []); setInfluencerIds(segmentData.influencerIds || []);
     } catch (e) { setError(e instanceof Error ? e.message : 'Betöltési hiba.'); }
     finally { setLoading(false); }
   };
   useEffect(() => { void reload(); }, []);
 
+  const saveSegmentLists = async (nextFamilyIds: string[], nextInfluencerIds: string[]) => {
+    setSegmentBusy(true); setSegmentError(''); setSegmentMessage('');
+    try {
+      const response = await fetch('/api/guest-segments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ familyIds: nextFamilyIds, influencerIds: nextInfluencerIds }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Nem sikerült menteni a listákat.');
+      setFamilyIds(result.familyIds); setInfluencerIds(result.influencerIds);
+      setSegmentMessage('A család- és influencerlista elmentve.');
+    } catch (e) { setSegmentError(e instanceof Error ? e.message : 'Nem sikerült menteni a listákat.'); }
+    finally { setSegmentBusy(false); }
+  };
+  const addSegmentId = (segment: 'family' | 'influencer') => {
+    const id = (segment === 'family' ? familyIdInput : influencerIdInput).trim();
+    const current = segment === 'family' ? familyIds : influencerIds;
+    if (!id || current.includes(id) || segmentBusy) return;
+    const nextFamilyIds = segment === 'family' ? [...familyIds, id] : familyIds;
+    const nextInfluencerIds = segment === 'influencer' ? [...influencerIds, id] : influencerIds;
+    if (segment === 'family') setFamilyIdInput(''); else setInfluencerIdInput('');
+    void saveSegmentLists(nextFamilyIds, nextInfluencerIds);
+  };
+  const removeSegmentId = (segment: 'family' | 'influencer', id: string) => {
+    if (segmentBusy) return;
+    const nextFamilyIds = segment === 'family' ? familyIds.filter(value => value !== id) : familyIds;
+    const nextInfluencerIds = segment === 'influencer' ? influencerIds.filter(value => value !== id) : influencerIds;
+    void saveSegmentLists(nextFamilyIds, nextInfluencerIds);
+  };
+
   const availableYears = useMemo(() => [...new Set(guests.flatMap(g => g.registeredAt ? [Number(g.registeredAt.slice(0, 4))] : []))].sort((a, b) => b - a), [guests]);
+  const guestById = useMemo(() => new Map(guests.map(guest => [guest.guestId, guest])), [guests]);
+  const excludedGuestIds = useMemo(() => new Set([...(excludeFamily ? familyIds : []), ...(excludeInfluencers ? influencerIds : [])]), [excludeFamily, excludeInfluencers, familyIds, influencerIds]);
+  const visibleGuests = useMemo(() => guests.filter(guest => !excludedGuestIds.has(guest.guestId)), [guests, excludedGuestIds]);
   const latestMonth = useMemo(() => guests.map(g => g.registeredAt?.slice(0, 7)).filter((v): v is string => Boolean(v)).sort().at(-1) || '', [guests]);
   const latestCompleteActivityImport = [...activityImports].filter(item => {
     const start = item.periodStart.match(/^(\d{4})-(\d{2})-01$/);
@@ -134,11 +175,11 @@ export function GuestsPage() {
     setComparisonDefaultsReady(true);
   }, [latestMonth, comparisonDefaultsReady]);
 
-  const periodGuests = useMemo(() => guests.filter(g => {
+  const periodGuests = useMemo(() => visibleGuests.filter(g => {
     if (!g.registeredAt || periodMode === 'all') return periodMode === 'all';
     if (periodMode === 'year') return g.registeredAt.startsWith(periodYear);
     return g.registeredAt.startsWith(`${periodYear}-${periodMonth}`);
-  }), [guests, periodMode, periodYear, periodMonth]);
+  }), [visibleGuests, periodMode, periodYear, periodMonth]);
   const periodSummaryValue = periodSummary(periodGuests, visits);
 
   const courseStats = useMemo(() => {
@@ -320,10 +361,10 @@ export function GuestsPage() {
     });
   }, [filtered, sortKey, sortDirection]);
   const periodLabel = periodMode === 'all' ? 'Teljes időszak' : periodMode === 'year' ? `${periodYear || '—'} teljes év` : periodYear && periodMonth ? monthName(`${periodYear}-${periodMonth}`) : 'Válassz időszakot';
-  const monthCompareA = periodSummary(guests.filter(g => g.registeredAt?.startsWith(`${compareYearA}-${compareMonthA}`)), visits);
-  const monthCompareB = periodSummary(guests.filter(g => g.registeredAt?.startsWith(`${compareYearB}-${compareMonthB}`)), visits);
-  const yearCompareA = periodSummary(guests.filter(g => g.registeredAt?.startsWith(compareAnnualA)), visits);
-  const yearCompareB = periodSummary(guests.filter(g => g.registeredAt?.startsWith(compareAnnualB)), visits);
+  const monthCompareA = periodSummary(visibleGuests.filter(g => g.registeredAt?.startsWith(`${compareYearA}-${compareMonthA}`)), visits);
+  const monthCompareB = periodSummary(visibleGuests.filter(g => g.registeredAt?.startsWith(`${compareYearB}-${compareMonthB}`)), visits);
+  const yearCompareA = periodSummary(visibleGuests.filter(g => g.registeredAt?.startsWith(compareAnnualA)), visits);
+  const yearCompareB = periodSummary(visibleGuests.filter(g => g.registeredAt?.startsWith(compareAnnualB)), visits);
 
   const importFile = async (file?: File) => {
     if (!file) return;
@@ -383,10 +424,27 @@ export function GuestsPage() {
         {(section === 'overview' || section === 'registration' || section === 'attendance') && <div className="chartToggle"><span>Regisztrációk bontása:</span><button className={!sourceChartMode ? 'active' : ''} onClick={() => setSourceChartMode(false)}>Összesen</button><button className={sourceChartMode ? 'active' : ''} onClick={() => setSourceChartMode(true)}>Forrás szerint</button></div>}
         <span className="guestPeriodResult">{periodLabel} · {periodSummaryValue.registrations} regisztráció</span>
       </div>}
+      {section !== 'import' && <div className="guestSegmentToggles" aria-label="Család és influencer vendégek szűrése">
+        <strong>Vendégcsoportok:</strong>
+        <button type="button" className={excludeFamily ? 'excluded' : ''} aria-pressed={excludeFamily} onClick={() => setExcludeFamily(value => !value)}>Család {excludeFamily ? 'kizárva' : 'benne'}</button>
+        <button type="button" className={excludeInfluencers ? 'excluded' : ''} aria-pressed={excludeInfluencers} onClick={() => setExcludeInfluencers(value => !value)}>Influencerek {excludeInfluencers ? 'kizárva' : 'benne'}</button>
+      </div>}
       {error && <p className="errorText">{error}</p>}{message && <p className="guestSuccess">{message}</p>}
     </section>
 
-    {section === 'import' && <><section className="panel guestImportGuide"><div className="panelHead"><div><h3>Importálási útmutató</h3><p className="panelSub">A vendég ID kapcsolja össze a listát az óra- és vásárlási adatokkal.</p></div><div className="latestImportBadge"><span>Legutóbbi teljes hónap</span><strong>{latestCompleteActivityImport ? `${monthName(latestCompleteActivityImport.periodStart.slice(0, 7))} · ${latestCompleteActivityImport.periodStart} – ${latestCompleteActivityImport.periodEnd}` : 'Még nincs teljes hónap rögzítve'}</strong></div></div><div className="guestImportRules"><div><strong>Vendéglista</strong><span>Mindig a teljes listát töltsd fel, ne csak az új vendégeket. Így a meglévő ID-k adatai is frissülnek.</span></div><div><strong>Óralátogatás és vásárlás</strong><span>Elég az új havi exportokat feltölteni. A korábban betöltött hónap újrafeltöltése biztonságos, nem duplikálja az alkalmakat és vásárlásokat.</span></div></div><p className="panelSub guestFilenameHint">A teljes hónap jelzéshez a fájlnév tartalmazza a riport kezdetét és végét, például: 2026-10-01-2026-10-31.</p></section><div className="guestImportGrid"><section className="panel guestImport"><div className="panelHead"><div><h3>Vendéglista import</h3><p className="panelSub">Azonosító alapján létrehozza vagy frissíti a vendégadatokat.</p></div><FileUp size={22}/></div>
+    {section === 'import' && <><section className="panel guestImportGuide"><div className="panelHead"><div><h3>Importálási útmutató</h3><p className="panelSub">A vendég ID kapcsolja össze a listát az óra- és vásárlási adatokkal.</p></div><div className="latestImportBadge"><span>Legutóbbi teljes hónap</span><strong>{latestCompleteActivityImport ? `${monthName(latestCompleteActivityImport.periodStart.slice(0, 7))} · ${latestCompleteActivityImport.periodStart} – ${latestCompleteActivityImport.periodEnd}` : 'Még nincs teljes hónap rögzítve'}</strong></div></div><div className="guestImportRules"><div><strong>Vendéglista</strong><span>Mindig a teljes listát töltsd fel, ne csak az új vendégeket. Így a meglévő ID-k adatai is frissülnek.</span></div><div><strong>Óralátogatás és vásárlás</strong><span>Elég az új havi exportokat feltölteni. A korábban betöltött hónap újrafeltöltése biztonságos, nem duplikálja az alkalmakat és vásárlásokat.</span></div></div><p className="panelSub guestFilenameHint">A teljes hónap jelzéshez a fájlnév tartalmazza a riport kezdetét és végét, például: 2026-10-01-2026-10-31.</p></section>
+      <section className="panel guestSegmentManager"><div className="panelHead"><div><h3>Család- és influencerlisták</h3><p className="panelSub">Az ID-k automatikusan bekerülnek a megfelelő statisztikákba. A külön kapcsolókkal az összes kimutatásból kizárhatod vagy visszateheted őket.</p></div></div>
+        {segmentError && <p className="errorText">{segmentError}</p>}{segmentMessage && <p className="guestSuccess">{segmentMessage}</p>}
+        <div className="guestSegmentColumns">
+          <div className="guestSegmentColumn"><h4>Család / Family <span>{familyIds.length}</span></h4><form className="guestSegmentAdd" onSubmit={event => { event.preventDefault(); addSegmentId('family'); }}><input className="inlineSelect" aria-label="Családtag vendég ID" placeholder="Vendég ID" value={familyIdInput} onChange={event => setFamilyIdInput(event.target.value)}/><button className="btn" disabled={segmentBusy || !familyIdInput.trim()}>Hozzáadás</button></form>
+            <div className="guestSegmentList">{familyIds.map(id => { const guest = guestById.get(id); return <div className="guestSegmentItem" key={id}><div><strong>{guest ? `${guest.lastName} ${guest.firstName}`.trim() : 'Név nem található'}</strong><small>ID: {id}</small></div><button type="button" className="guestSegmentRemove" disabled={segmentBusy} onClick={() => removeSegmentId('family', id)}>Eltávolítás</button></div>; })}{!familyIds.length && <p className="panelSub">A családlista üres.</p>}</div>
+          </div>
+          <div className="guestSegmentColumn"><h4>Influencerek <span>{influencerIds.length}</span></h4><form className="guestSegmentAdd" onSubmit={event => { event.preventDefault(); addSegmentId('influencer'); }}><input className="inlineSelect" aria-label="Influencer vendég ID" placeholder="Vendég ID" value={influencerIdInput} onChange={event => setInfluencerIdInput(event.target.value)}/><button className="btn" disabled={segmentBusy || !influencerIdInput.trim()}>Hozzáadás</button></form>
+            <div className="guestSegmentList">{influencerIds.map(id => { const guest = guestById.get(id); return <div className="guestSegmentItem" key={id}><div><strong>{guest ? `${guest.lastName} ${guest.firstName}`.trim() : 'Név nem található'}</strong><small>ID: {id}</small></div><button type="button" className="guestSegmentRemove" disabled={segmentBusy} onClick={() => removeSegmentId('influencer', id)}>Eltávolítás</button></div>; })}{!influencerIds.length && <p className="panelSub">Az influencerlista üres.</p>}</div>
+          </div>
+        </div>
+      </section>
+      <div className="guestImportGrid"><section className="panel guestImport"><div className="panelHead"><div><h3>Vendéglista import</h3><p className="panelSub">Azonosító alapján létrehozza vagy frissíti a vendégadatokat.</p></div><FileUp size={22}/></div>
       <label className={`guestDrop ${busy ? 'disabled' : ''}`}><input type="file" accept=".xlsx,.xls" disabled={busy} onChange={e => { void importFile(e.target.files?.[0]); e.currentTarget.value = ''; }}/><FileUp size={30}/><strong>{busy ? 'Beolvasás és mentés…' : 'Vendéglista Excel kiválasztása'}</strong><span>.xlsx vagy .xls · az első munkalap vendégazonosítója alapján frissít.</span></label>
       <p className="infoBox">A fájlban elérhető vendégadatokat menti. Ha a fájlból hiányzik a regisztrációs vagy látogatási dátum, a korábban mentett érték megmarad. A kitöltött forrás frissül, az üres forrás nem törli a korábbi adatot.</p>
     </section><section className="panel guestImport"><div className="panelHead"><div><h3>Óralátogatás és vásárlás import</h3><p className="panelSub">A két munkalapot a vendég ID és óraidőpont alapján összekapcsolja.</p></div><FileUp size={22}/></div>
