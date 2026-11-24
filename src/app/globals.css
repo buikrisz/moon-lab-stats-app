@@ -1082,3 +1082,12 @@ table{
     margin:0;
   }
 }
+
+.guestInsightGrid > .guestAttendanceWide{grid-column:1 / -1}
+.guestAttendanceRows{grid-template-columns:minmax(0,1fr);margin-top:14px}
+
+.guestAttendanceDistribution{margin-top:24px;padding-top:18px;border-top:1px solid #e8dfd3}
+.guestAttendanceDistributionGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.guestAttendanceDistributionChart{min-width:0;padding:14px;border:1px solid #eee5da;border-radius:16px;background:#fff}
+.guestAttendanceDistributionChart h4{margin:0 0 6px}
+@media(max-width:900px){.guestAttendanceDistributionGrid{grid-template-columns:minmax(0,1fr)}}
