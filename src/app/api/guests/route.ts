@@ -21,7 +21,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!requireSession(request)) return unauthorized();
   try {
-    const body = await request.json() as { guests?: GuestRecord[] };
+    type GuestImport = Partial<GuestRecord> & Pick<GuestRecord, 'guestId' | 'source'>;
+    const body = await request.json() as { guests?: GuestImport[] };
     if (!Array.isArray(body.guests) || body.guests.length > 10000) {
       return NextResponse.json({ error: 'Érvénytelen vagy túl nagy import.' }, { status: 400 });
     }
@@ -32,10 +33,19 @@ export async function POST(request: Request) {
     await collection.createIndex({ studioId: 1, guestId: 1 }, { unique: true });
     const ops = valid.map(guest => {
       const { guestId, ...data } = guest;
-      return { updateOne: { filter: { studioId, guestId: String(guestId).trim() }, update: { $set: { ...data, guestId: String(guestId).trim(), studioId, updatedAt: new Date() } }, upsert: true } };
+      const defaults = { lastName: '', firstName: '', nickname: '', registeredAt: null, firstVisitAt: null, lastVisitAt: null, courses: [], activeMembership: '', source: 'guest-list' };
+      return { updateOne: {
+        filter: { studioId, guestId: String(guestId).trim() },
+        update: {
+          $set: { ...data, guestId: String(guestId).trim(), studioId, updatedAt: new Date() },
+          $setOnInsert: Object.fromEntries(Object.entries(defaults).filter(([key]) => !(key in data))),
+        },
+        upsert: true,
+      } };
     });
     const result = await collection.bulkWrite(ops, { ordered: false });
-    return NextResponse.json({ received: valid.length, inserted: result.upsertedCount, updated: result.modifiedCount, matched: result.matchedCount });
+    const sourcesProvided = valid.filter(guest => guest.registrationSource?.trim()).length;
+    return NextResponse.json({ received: valid.length, inserted: result.upsertedCount, updated: result.modifiedCount, matched: result.matchedCount, sourcesProvided });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Importálási hiba.' }, { status: 500 });
   }
